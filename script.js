@@ -3,11 +3,14 @@ let rows = 90;
 let colWidths = [];
 let rowHeights = [];
 let cellColors = []; // Array to store the colors of each cell
+let cellShapes = []; // Array to store the shape of each cell
 let dragCol = -1;
 let dragRow = -1;
 let offsetX = 0;
 let offsetY = 0;
 let dragging = false; // Flag to indicate if dragging is happening
+let selectedColor;
+let drawShape = 'rect'; // Variable to store the current shape
 
 function setup() {
   createCanvas(1500, 700);
@@ -19,17 +22,42 @@ function setup() {
     rowHeights[j] = 3000 / rows;
   }
 
-  // Initialize cell colors to white, first row and first column (except the first cell) to green
+  // Initialize cell colors to white and shapes to rectangle
   for (let i = 0; i < cols; i++) {
     cellColors[i] = [];
+    cellShapes[i] = [];
     for (let j = 0; j < rows; j++) {
       if (j == 0 || i == 0) {
         cellColors[i][j] = color(33, 115, 70); // Green color for the first row and first column
+        cellShapes[i][j] = 'rect'; // Default shape
       } else {
         cellColors[i][j] = color(255);
+        cellShapes[i][j] = 'rect'; // Default shape
       }
     }
   }
+
+  // Set default selected color
+  selectedColor = color(0); // Default to black
+
+  // Create buttons for shapes
+  let roundBtn = createButton('Round');
+  roundBtn.position(10, height + 10);
+  roundBtn.mousePressed(() => drawShape = 'circle');
+
+  let triangleBtn = createButton('Triangle');
+  triangleBtn.position(70, height + 10);
+  triangleBtn.mousePressed(() => drawShape = 'triangle');
+
+  let fillBtn = createButton('Fill');
+  fillBtn.position(140, height + 10);
+  fillBtn.mousePressed(() => drawShape = 'rect');
+
+  // Create color swatches
+  createSwatch(color(0, 0, 0), 10, height + 50); // Black
+  createSwatch(color(78, 78, 78), 40, height + 50); // Dark Grey
+  createSwatch(color(150, 150, 150), 70, height + 50); // Grey
+  createSwatch(color(230, 230, 230), 100, height + 50); // Light Grey
 
   // Add event listener to the download button
   let downloadBtn = select('#downloadBtn');
@@ -47,6 +75,7 @@ function drawGrid() {
 
   textAlign(CENTER, CENTER);
   textSize(16);
+  strokeWeight(0.5);
 
   // Draw columns
   for (let i = 0; i <= cols; i++) {
@@ -72,13 +101,25 @@ function drawGrid() {
     line(0, y, width, y);
   }
 
-  // Draw cells with their respective colors
+  // Draw cells with their respective colors and shapes
   x = 0;
   for (let i = 0; i < cols; i++) {
     y = 0;
     for (let j = 0; j < rows; j++) {
       fill(cellColors[i][j]);
-      rect(x, y, colWidths[i], rowHeights[j]);
+      if (cellShapes[i][j] === 'circle') {
+        ellipse(x + colWidths[i] / 2, y + rowHeights[j] / 2, colWidths[i], rowHeights[j]);
+      } else if (cellShapes[i][j] === 'triangleTopLeft') {
+        triangle(x, y, x + colWidths[i], y, x, y + rowHeights[j]);
+      } else if (cellShapes[i][j] === 'triangleTopRight') {
+        triangle(x + colWidths[i], y, x, y, x + colWidths[i], y + rowHeights[j]);
+      } else if (cellShapes[i][j] === 'triangleBottomRight') {
+        triangle(x + colWidths[i], y + rowHeights[j], x + colWidths[i], y, x, y + rowHeights[j]);
+      } else if (cellShapes[i][j] === 'triangleBottomLeft') {
+        triangle(x, y + rowHeights[j], x + colWidths[i], y + rowHeights[j], x, y);
+      } else {
+        rect(x, y, colWidths[i], rowHeights[j]);
+      }
       // Draw column labels in the first row
       if (j == 0 && i > 0) { // Skip the first cell (i = 0)
         fill(255); // Text color white
@@ -99,8 +140,8 @@ function mousePressed() {
   let x = 0;
   let y = 0;
 
-  // Check for column drag (only in the first row)
-  if (mouseY < rowHeights[0]) {
+  // Check for column drag (only in the first row) and exclude the null column
+  if (mouseY < rowHeights[0] && mouseX > colWidths[0]) {
     for (let i = 1; i < cols; i++) { // Start from 1 to exclude the null column
       x += colWidths[i - 1];
       if (mouseX > x - 5 && mouseX < x + 5) {
@@ -112,8 +153,8 @@ function mousePressed() {
     }
   }
 
-  // Check for row drag (only in the first column)
-  if (mouseX < colWidths[0]) {
+  // Check for row drag (only in the first column) and exclude the null row
+  if (mouseX < colWidths[0] && mouseY > rowHeights[0]) {
     for (let j = 1; j < rows; j++) { // Start from 1 to exclude the null row
       y += rowHeights[j - 1];
       if (mouseY > y - 5 && mouseY < y + 5) {
@@ -125,7 +166,7 @@ function mousePressed() {
     }
   }
 
-  // Check for cell click to change color
+  // Check for cell click to change color and shape
   x = 0;
   for (let i = 0; i < cols; i++) {
     y = 0;
@@ -136,12 +177,18 @@ function mousePressed() {
         continue;
       }
       if (mouseX > x && mouseX < x + colWidths[i] && mouseY > y && mouseY < y + rowHeights[j]) {
-        // Toggle cell color between black and white
-        let currentColor = cellColors[i][j];
-        if (red(currentColor) === 0 && green(currentColor) === 0 && blue(currentColor) === 0) {
-          cellColors[i][j] = color(255);
+        if (cellShapes[i][j] === 'triangleTopLeft') {
+          cellShapes[i][j] = 'triangleTopRight';
+        } else if (cellShapes[i][j] === 'triangleTopRight') {
+          cellShapes[i][j] = 'triangleBottomRight';
+        } else if (cellShapes[i][j] === 'triangleBottomRight') {
+          cellShapes[i][j] = 'triangleBottomLeft';
+        } else if (cellShapes[i][j] === 'triangleBottomLeft') {
+          cellColors[i][j] = color(255); // Toggle to white
+          cellShapes[i][j] = 'rect'; // Toggle to rectangle
         } else {
-          cellColors[i][j] = color(0);
+          cellColors[i][j] = selectedColor;
+          cellShapes[i][j] = drawShape === 'triangle' ? 'triangleTopLeft' : drawShape;
         }
         return; // Exit after finding the cell
       }
@@ -156,14 +203,14 @@ function mouseDragged() {
   dragging = true;
 
   // Resize columns
-  if (dragCol != -1) {
+  if (dragCol > 0) { // Prevent resizing the null column
     let xOffset = mouseX - offsetX;
     let newWidth = xOffset - sumArray(colWidths, dragCol - 1);
     colWidths[dragCol - 1] = max(newWidth, 20); // Minimum column width
   }
 
   // Resize rows
-  if (dragRow != -1) {
+  if (dragRow > 0) { // Prevent resizing the null row
     let yOffset = mouseY - offsetY;
     let newHeight = yOffset - sumArray(rowHeights, dragRow - 1);
     rowHeights[dragRow - 1] = max(newHeight, 20); // Minimum row height
@@ -176,8 +223,17 @@ function mouseReleased() {
   dragging = false;
 }
 
+function createSwatch(col, x, y) {
+  let swatch = createDiv('');
+  swatch.style('width', '30px');
+  swatch.style('height', '30px');
+  swatch.style('background-color', col);
+  swatch.position(x, y);
+  swatch.mousePressed(() => selectedColor = col);
+}
+
 function downloadCanvas() {
-  saveCanvas('canvas', 'jpg');
+  saveCanvas('myCanvas', 'jpg');
 }
 
 function sumArray(arr, end) {
