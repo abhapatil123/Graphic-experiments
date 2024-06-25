@@ -177,7 +177,10 @@ function mousePressed() {
         continue;
       }
       if (mouseX > x && mouseX < x + colWidths[i] && mouseY > y && mouseY < y + rowHeights[j]) {
-        if (cellShapes[i][j] === 'triangleTopLeft') {
+        if (cellColors[i][j].toString() === selectedColor.toString() && cellShapes[i][j] === drawShape) {
+          cellColors[i][j] = color(255); // Toggle to white
+          cellShapes[i][j] = 'rect'; // Toggle to rectangle
+        } else if (cellShapes[i][j] === 'triangleTopLeft') {
           cellShapes[i][j] = 'triangleTopRight';
         } else if (cellShapes[i][j] === 'triangleTopRight') {
           cellShapes[i][j] = 'triangleBottomRight';
